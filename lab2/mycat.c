@@ -5,8 +5,6 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-#define BUF_SIZE 512
-
 int main(int argc, char** argv){
     if(argc <= 1){
         fprintf(stderr, "Too few args\n");
