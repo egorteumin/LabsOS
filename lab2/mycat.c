@@ -67,6 +67,7 @@ int main(int argc, char** argv){
         FILE *file = fopen(fileNameArr[i], "r");
         if(!file){
             fprintf(stderr, "Error: %s (%d)\n", strerror(errno), errno);
+            free(fileNameArr);
             return 1;
         }
         printf("%s:\n", fileNameArr[i]);
@@ -99,8 +100,9 @@ int main(int argc, char** argv){
             printf("\n");
         }
 
-        fclose(file);
+        fclose(file); 
     }
 
+    free(fileNameArr);
     return 0;
 }
