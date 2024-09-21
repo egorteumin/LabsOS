@@ -14,6 +14,7 @@
 #define GREEN   "\x1B[32m"
 #define BLUE    "\x1B[34m"
 #define CYAN    "\x1B[36m"
+#define RED     "\x1b[31m"
 
 //  Функция для проверки является ли сущность скрытой
 int isntHidden(const struct dirent* entity){
@@ -133,16 +134,39 @@ char* linkColor(const char* linkMode){
     return RESET;
 }
 
-//  Функция для печати полной информации о директории
-int printFullEnt(const char* dirPath, struct dirent **namelist, const int numEtities){
+size_t totalBlks(const char* dirPath, struct dirent **namelist, const int numEtities){
     struct stat entityInfo;
     char entityPath[256];
     int k = -1;
+    size_t total = 0;
+
     while(++k < numEtities){
         strcpy(entityPath, dirPath);
         strcat(entityPath, "/");
         strcat(entityPath, namelist[k]->d_name);
 
+        if(lstat(entityPath, &entityInfo) == -1){
+            return 1;
+        }
+        else{
+            total += entityInfo.st_blocks;
+        }
+    }
+
+    return total;
+}
+
+//  Функция для печати полной информации о директории
+int printFullEnt(const char* dirPath, struct dirent **namelist, const int numEtities){
+    struct stat entityInfo;
+    char entityPath[256];
+    int k = -1;
+
+    while(++k < numEtities){
+        strcpy(entityPath, dirPath);
+        strcat(entityPath, "/");
+        strcat(entityPath, namelist[k]->d_name);
+    
         if(lstat(entityPath, &entityInfo) == -1){
             return 1;
         }
@@ -153,9 +177,6 @@ int printFullEnt(const char* dirPath, struct dirent **namelist, const int numEti
             char *userName;
             char *groupName;
 
-
-            //  Тут valgrind ругается на утечку памяти,
-            //  но я никак не могу понять где она тут
             if(getpwuid(entityInfo.st_uid) == NULL){
                 sprintf(userName, "%d", entityInfo.st_uid);
             }
@@ -192,11 +213,13 @@ int printFullEnt(const char* dirPath, struct dirent **namelist, const int numEti
             switch(mode[0]){
                 case 'l':
                 {
-                    strcpy(entColor, CYAN);
+                    if(readlink(entityPath, linkPath, 256 * sizeof(char)) == -1){
+                        free(linkPath);
+                        return 1;
+                    }
 
                     isLink = true;
-                    readlink(entityPath, linkPath, 256 * sizeof(char));
-
+                    
                     char *fullLinkPath = calloc(256, sizeof(char));
                     strcpy(fullLinkPath, dirPath);
                     strcat(fullLinkPath, "/");
@@ -204,10 +227,10 @@ int printFullEnt(const char* dirPath, struct dirent **namelist, const int numEti
 
                     struct stat linkStat;
                     if(lstat(fullLinkPath, &linkStat) == -1){
-                        free(linkCol);
-                        free(linkPath);
+                        strcpy(entColor, RED);
+                        linkCol = RED;
                         free(fullLinkPath);
-                        return 1;
+                        break;
                     }
                     else{
                         char linkMode[11];
@@ -215,6 +238,7 @@ int printFullEnt(const char* dirPath, struct dirent **namelist, const int numEti
                         linkCol = linkColor(linkMode);
                     }
 
+                    strcpy(entColor, CYAN);
                     free(fullLinkPath);
                     break;
                 }
@@ -319,6 +343,7 @@ int printDir(const char *dirPath, int (*filter)(const struct dirent* entity), co
     }
     else{
         if(lFlag){
+            printf("total %ld\n", totalBlks(dirPath, namelist, n)/2);
             return printFullEnt(dirPath, namelist, n);
         }
         else{
