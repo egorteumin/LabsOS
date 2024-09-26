@@ -35,26 +35,34 @@ int main(int argc, char** argv){
     }
     if(arrSize == 0){
         char buf[BUF_SIZE];
-        char *rtrn;
+        char *token;
+        size_t tokenLen = 0;
     
-        while((rtrn = fgets(buf, BUF_SIZE, stdin))){
-            if(rtrn == NULL){
-                fprintf(stderr, "Error: %s (%d)\n", strerror(errno), errno);
-                regfree(&regex);
-                free(fileNameArr);
-                return 1;
-            }
+        while(fread(buf, sizeof(char), BUF_SIZE, stdin) > 0){
+            token = strtok(buf, "\n");
 
-            if(regexec(&regex, buf, 0, NULL, 0) == 0){
-                printf("%s", buf);
+            while(token){
+                if(regexec(&regex, token, 0, NULL, 0) == 0){
+                    printf("%s\n", token);
+                }
+
+                tokenLen = strlen(token);
+                token = strtok(token+(strlen(token)+1), "\n");
+
+                if(token == NULL){
+                    if(feof(stdin)){
+                        break;
+                    }
+                    fseek(stdin, -tokenLen, SEEK_CUR);
+                    break;
+                }
             }
         }
+
+        regfree(&regex);
+        free(fileNameArr);
         return 0;
     }
-
-
-    char buf[BUF_SIZE];
-    char *rtrn;
 
     for(int i = 0; i < arrSize; ++i){
         FILE *file = fopen(fileNameArr[i], "r");
@@ -66,20 +74,30 @@ int main(int argc, char** argv){
             return 1;
         }
 
-        while((rtrn = fgets(buf, BUF_SIZE, file))){
-            if(rtrn == NULL){
-                fprintf(stderr, "Error: %s (%d)\n", strerror(errno), errno);
-                regfree(&regex);
-                free(fileNameArr);
-                fclose(file);
-                return 1;
-            }
+        char buf[BUF_SIZE];
+        char *token;
+        size_t tokenLen = 0;
 
-            if(regexec(&regex, buf, 0, NULL, 0) == 0){
-                if(arrSize > 1){
-                    printf("%s%s%s:%s", MAGENTA, fileNameArr[i], CYAN, RESET);
+        while(fread(buf, sizeof(char), BUF_SIZE, file) > 0){
+            token = strtok(buf, "\n");
+            while(token){
+                if(regexec(&regex, token, 0, NULL, 0) == 0){
+                    if(arrSize > 1){
+                        printf("%s%s%s:%s", MAGENTA, fileNameArr[i], CYAN, RESET);
+                    }
+                    printf("%s\n", token);
                 }
-                printf("%s", buf);
+
+                tokenLen = strlen(token);
+                token = strtok(token+(strlen(token)+1), "\n");
+
+                if(token == NULL){
+                    if(feof(file)){
+                        break;
+                    }
+                    fseek(file, -tokenLen, SEEK_CUR);
+                    break;
+                }
             }
         }
 
