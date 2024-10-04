@@ -48,7 +48,6 @@ int main(){
         {
             fprintf(stderr, "Error: %s (%d)\n", strerror(errno), errno);
             return 1;
-            break;
         }
         case 0:
         {
