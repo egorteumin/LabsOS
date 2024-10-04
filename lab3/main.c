@@ -42,8 +42,7 @@ int main(){
         return 1;
     }
 
-
-    __pid_t res = 0;
+    pid_t res = 0;
     switch(res = fork()){
         case -1:
         {
@@ -60,7 +59,9 @@ int main(){
         default:
         {
             printf("Parent process. Parent(my) pid: %d. Child pid: %d\n", getpid(), res);
-            wait(NULL);
+            int a;
+            wait(&a);
+            printf("Exit status in child: %d\n", WEXITSTATUS(a));
             break;
         }
     }
