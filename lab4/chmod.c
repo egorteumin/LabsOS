@@ -42,7 +42,6 @@ void change_mode(const char perm, const int oct_who, mode_t *mode, const bool is
     }
 
     switch(oct_who){
-        case 0:
         case 01:
             chmod_lidl(is_plus, mode, mask[0]);
             break;
@@ -61,6 +60,7 @@ void change_mode(const char perm, const int oct_who, mode_t *mode, const bool is
         case 06:
             chmod_lidl(is_plus, mode, mask[1] + mask[2]);
             break;
+        case 0:
         case 07:
             chmod_lidl(is_plus, mode, mask[0] + mask[1] + mask[2]);
             break;
