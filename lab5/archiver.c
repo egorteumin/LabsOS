@@ -28,6 +28,71 @@ struct fmeta{
     time_t mtime;
 };
 
+void delete_file(int archive_fd, const char *file_name){
+    struct fmeta file_meta;
+    char buf[BUF_SIZE];
+    char tmp_file_name[] = ".archivetmp";
+    int tmp_file_fd = 0;
+    ssize_t n = 0;
+    off_t file_size;
+
+    if((tmp_file_fd = open(&tmp_file_name, O_RDWR | O_CREAT | O_EXCL, 0777)) == -1){
+        fprintf(stderr, "Error: %s (%d)\n", strerror(errno), errno);
+        return;
+    }
+
+    while(read(archive_fd, &file_meta, sizeof(file_meta)) == sizeof(file_meta)){
+        if(strcmp(file_meta.name, file_name) == 0){
+            lseek(archive_fd, (off_t)sizeof(file_name)+file_meta.size , SEEK_CUR);
+            continue;
+        }
+        else{
+            if(write(tmp_file_fd, &file_meta, sizeof(file_meta)) != sizeof(file_meta)){
+                fprintf(stderr, "Error: %s (%d)\n", strerror(errno), errno);
+                close(tmp_file_fd);
+                // delete file from dir
+                return;
+            }
+
+            file_size = file_meta.size;
+            while((n = read(archive_fd, buf, BUF_SIZE)) > 0 && file_size > 0){
+                if(write(tmp_file_fd, buf, n) != n){
+                    fprintf(stderr, "Error: %s (%d)\n", strerror(errno), errno);
+                    close(tmp_file_fd);
+                    // delete file from dir
+                    return;
+                }
+                file_size -= n;
+            }
+
+            if(file_size < 0){
+                lseek(archive_fd, file_size, SEEK_CUR);
+            }
+        }
+    }
+
+    close(archive_fd);
+    if(open(archive_fd, O_WRONLY | O_TRUNC) == -1){
+        fprintf(stderr, "Error: %s (%d)\n", strerror(errno), errno);
+        close(tmp_file_fd);
+        return;
+    }
+
+    lseek(tmp_file_fd, 0, SEEK_SET);
+    while(read(tmp_file_fd, buf, BUF_SIZE) > 0){
+        if(write(archive_fd, buf, sizeof(buf)) != sizeof(buf)){
+            fprintf(stderr, "Error: %s (%d)\n", strerror(errno), errno);
+            close(tmp_file_fd);
+            // delete file from dir
+            return;
+        }
+    }
+
+    close(tmp_file_fd);
+    // delete tmp_file
+    return;
+}
+
 void insert_file(int archive_fd, const char *file_name){
     int file_fd = 0;
     if((file_fd = open(file_name, O_RDONLY)) == -1){
@@ -80,13 +145,13 @@ void extract_file(int archive_fd, const char *file_name){
 
     while(read(archive_fd, &file_meta, sizeof(file_meta)) == sizeof(file_meta)){
         if(strcmp(file_meta.name, file_name) == 0){
-            if((file_fd = open(file_name, O_WRONLY | O_CREAT | O_TRUNC, file_meta.mode)) == -1){
+            if((file_fd = open(file_name, O_WRONLY | O_CREAT | O_EXCL, file_meta.mode)) == -1){
                 fprintf(stderr, "File '%s' cannot be extracted from archive: %s (%d)\n", file_name, strerror(errno), errno);
                 return;
             }
-
+            // check for correct reading. may read more than needed
             file_size = file_meta.size;
-            while((n = read(archive_fd, buf, BUF_SIZE)) > 0){
+            while((n = read(archive_fd, buf, BUF_SIZE)) > 0 && file_size > 0){
                 if(write(file_fd, buf, n) != n){
                     fprintf(stderr, "File '%s' cannot be extracted from archive: %s (%d)\n", file_name, strerror(errno), errno);
                     close(file_fd);
@@ -111,6 +176,18 @@ void extract_file(int archive_fd, const char *file_name){
     }
 
     fprintf(stderr, "File '%s' were not found in archive\n", file_name);
+    return;
+}
+
+void archive_stat(int archive_fd){
+    struct fmeta file_meta;
+    char buf[BUF_SIZE];
+    size_t n = 0;
+
+    while(read(archive_fd, &file_meta, sizeof(file_meta)) > 0){
+        printf("File %d: '%s'\n", ++n, file_meta.name);
+    }
+
     return;
 }
 
@@ -162,7 +239,7 @@ int main(int argc, char **argv){
             }
 
             int archive_fd = 0;
-            if((archive_fd = open(argv[1], O_WRONLY | O_APPEND | O_CREAT, 777)) == -1){
+            if((archive_fd = open(argv[1], O_WRONLY | O_APPEND | O_CREAT, 0777)) == -1){
                 fprintf(stderr, "Error: %s (%d)\n", strerror(errno), errno);
                 return 1;
             }
@@ -195,6 +272,21 @@ int main(int argc, char **argv){
             break;
         }
         case s:
+            if(argc < 3){
+                fprintf(stderr, "Error: too few arguments (-h for help menu)\n");
+                return 1;
+            }
+
+            int archive_fd = 0;
+            if((archive_fd = open(argv[1], O_RDONLY)) == -1){
+                fprintf(stderr, "Error: %s (%d)\n", strerror(errno), errno);
+                return 1;
+            }
+
+            archive_stat(archive_stat);
+            
+            close(archive_fd);
+            break;
         case h:
             help();
             break;
