@@ -186,6 +186,7 @@ void archive_stat(int archive_fd){
 
     while(read(archive_fd, &file_meta, sizeof(file_meta)) > 0){
         printf("File %d: '%s'\n", ++n, file_meta.name);
+        lseek(archive_fd, file_meta.size, SEEK_CUR);
     }
 
     return;
