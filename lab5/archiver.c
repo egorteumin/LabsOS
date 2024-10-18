@@ -28,7 +28,7 @@ struct fmeta{
     time_t mtime;
 };
 
-void delete_file(int archive_fd, const char *file_name){
+void delete_file(const char *archive_name, int archive_fd, const char *file_name){
     struct fmeta file_meta;
     char buf[BUF_SIZE];
     char tmp_file_name[] = ".archivetmp";
@@ -36,7 +36,7 @@ void delete_file(int archive_fd, const char *file_name){
     ssize_t n = 0;
     off_t file_size;
 
-    if((tmp_file_fd = open(&tmp_file_name, O_RDWR | O_CREAT | O_EXCL, 0777)) == -1){
+    if((tmp_file_fd = open(tmp_file_name, O_RDWR | O_CREAT | O_EXCL, 0777)) == -1){
         fprintf(stderr, "Error: %s (%d)\n", strerror(errno), errno);
         return;
     }
@@ -72,7 +72,7 @@ void delete_file(int archive_fd, const char *file_name){
     }
 
     close(archive_fd);
-    if(open(archive_fd, O_WRONLY | O_TRUNC) == -1){
+    if(open(archive_name, O_WRONLY | O_TRUNC) == -1){
         fprintf(stderr, "Error: %s (%d)\n", strerror(errno), errno);
         close(tmp_file_fd);
         return;
@@ -136,7 +136,7 @@ void insert_file(int archive_fd, const char *file_name){
     return;
 }
 
-void extract_file(int archive_fd, const char *file_name){
+void extract_file(const char *archive_name, int archive_fd, const char *file_name){
     struct fmeta file_meta;
     int file_fd;
     char buf[BUF_SIZE];
@@ -168,6 +168,7 @@ void extract_file(int archive_fd, const char *file_name){
             utimes(file_name, times);
 
             close(file_fd);
+            delete_file(archive_name, archive_fd, file_name);
             return;
         }
         else{
@@ -181,11 +182,10 @@ void extract_file(int archive_fd, const char *file_name){
 
 void archive_stat(int archive_fd){
     struct fmeta file_meta;
-    char buf[BUF_SIZE];
     size_t n = 0;
 
     while(read(archive_fd, &file_meta, sizeof(file_meta)) > 0){
-        printf("File %d: '%s'\n", ++n, file_meta.name);
+        printf("File %ld: '%s'\n", ++n, file_meta.name);
         lseek(archive_fd, file_meta.size, SEEK_CUR);
     }
 
@@ -266,7 +266,7 @@ int main(int argc, char **argv){
             }
 
             for(int i = 3; i < argc; ++i){
-                extract_file(archive_fd, argv[i]);
+                extract_file(argv[1], archive_fd, argv[i]);
             }
 
             close(archive_fd);
@@ -284,7 +284,7 @@ int main(int argc, char **argv){
                 return 1;
             }
 
-            archive_stat(archive_stat);
+            archive_stat(archive_fd);
             
             close(archive_fd);
             break;
