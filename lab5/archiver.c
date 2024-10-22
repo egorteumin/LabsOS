@@ -31,7 +31,7 @@ struct fmeta{
 void delete_file(const char *archive_name, int archive_fd, const char *file_name){
     struct fmeta file_meta;
     char buf[BUF_SIZE];
-    char tmp_file_name[] = ".archivetmp";
+    char tmp_file_name[] = "archive_tmp";
     int tmp_file_fd = 0;
     ssize_t n = 0;
     off_t file_size;
@@ -43,23 +43,23 @@ void delete_file(const char *archive_name, int archive_fd, const char *file_name
 
     while(read(archive_fd, &file_meta, sizeof(file_meta)) == sizeof(file_meta)){
         if(strcmp(file_meta.name, file_name) == 0){
-            lseek(archive_fd, (off_t)sizeof(file_name)+file_meta.size , SEEK_CUR);
+            lseek(archive_fd, file_meta.size , SEEK_CUR);
             continue;
         }
         else{
             if(write(tmp_file_fd, &file_meta, sizeof(file_meta)) != sizeof(file_meta)){
                 fprintf(stderr, "Error: %s (%d)\n", strerror(errno), errno);
                 close(tmp_file_fd);
-                // delete file from dir
+                remove(tmp_file_name);
                 return;
             }
 
             file_size = file_meta.size;
-            while((n = read(archive_fd, buf, BUF_SIZE)) > 0 && file_size > 0){
+            while((n = read(archive_fd, buf, (file_size > BUF_SIZE) ? BUF_SIZE : file_size)) > 0 && file_size > 0){
                 if(write(tmp_file_fd, buf, n) != n){
                     fprintf(stderr, "Error: %s (%d)\n", strerror(errno), errno);
                     close(tmp_file_fd);
-                    // delete file from dir
+                    remove(tmp_file_name);
                     return;
                 }
                 file_size -= n;
@@ -71,25 +71,10 @@ void delete_file(const char *archive_name, int archive_fd, const char *file_name
         }
     }
 
-    close(archive_fd);
-    if(open(archive_name, O_WRONLY | O_TRUNC) == -1){
-        fprintf(stderr, "Error: %s (%d)\n", strerror(errno), errno);
-        close(tmp_file_fd);
-        return;
-    }
-
-    lseek(tmp_file_fd, 0, SEEK_SET);
-    while(read(tmp_file_fd, buf, BUF_SIZE) > 0){
-        if(write(archive_fd, buf, sizeof(buf)) != sizeof(buf)){
-            fprintf(stderr, "Error: %s (%d)\n", strerror(errno), errno);
-            close(tmp_file_fd);
-            // delete file from dir
-            return;
-        }
-    }
-
     close(tmp_file_fd);
-    // delete tmp_file
+    remove(archive_name);
+    rename(tmp_file_name, archive_name);
+
     return;
 }
 
@@ -116,7 +101,7 @@ void insert_file(int archive_fd, const char *file_name){
     file_meta.atime = file_stat.st_atime;
     file_meta.mtime = file_stat.st_mtime;
 
-    if(write(archive_fd, &file_meta, sizeof(file_meta)) == sizeof(file_meta)){
+    if(write(archive_fd, &file_meta, sizeof(file_meta)) != sizeof(file_meta)){
         fprintf(stderr, "File '%s' cannot be added to archive: %s (%d)\n", file_name, strerror(errno), errno);
         close(file_fd);
         return;
@@ -132,6 +117,7 @@ void insert_file(int archive_fd, const char *file_name){
         }
     }
 
+    remove(file_name);
     close(file_fd);
     return;
 }
@@ -149,7 +135,7 @@ void extract_file(const char *archive_name, int archive_fd, const char *file_nam
                 fprintf(stderr, "File '%s' cannot be extracted from archive: %s (%d)\n", file_name, strerror(errno), errno);
                 return;
             }
-            // check for correct reading. may read more than needed
+
             file_size = file_meta.size;
             while((n = read(archive_fd, buf, BUF_SIZE)) > 0 && file_size > 0){
                 if(write(file_fd, buf, n) != n){
@@ -160,6 +146,10 @@ void extract_file(const char *archive_name, int archive_fd, const char *file_nam
                 file_size -= n;
             }
 
+            if(file_size < 0){
+                lseek(archive_fd, file_size, SEEK_CUR);
+            }
+
             struct timeval times[2];
             times[0].tv_sec = file_meta.atime;
             times[1].tv_sec = file_meta.mtime;
@@ -168,6 +158,8 @@ void extract_file(const char *archive_name, int archive_fd, const char *file_nam
             utimes(file_name, times);
 
             close(file_fd);
+
+            lseek(archive_fd, 0, SEEK_SET);
             delete_file(archive_name, archive_fd, file_name);
             return;
         }
@@ -176,7 +168,7 @@ void extract_file(const char *archive_name, int archive_fd, const char *file_nam
         }
     }
 
-    fprintf(stderr, "File '%s' were not found in archive\n", file_name);
+    fprintf(stderr, "File '%s' was not found in archive\n", file_name);
     return;
 }
 
@@ -193,7 +185,8 @@ void archive_stat(int archive_fd){
 }
 
 void help(){
-    printf("Usage: ./archiver [ARCHIVE_NAME] [OPTION] [FILE]...\n\n");
+    printf("Usage: ./archiver [ARCHIVE_NAME] [OPTION] [FILE]...\n");
+    printf("ARCHIVE_NAME must end with .arch\n\n");
     printf("Possible options:\n");
     printf("-i, --input  \tinsert file(s) to archive\n");
     printf("-e, --extract\textract file(s) from archive\n");
@@ -239,8 +232,15 @@ int main(int argc, char **argv){
                 return 1;
             }
 
+            char archive_name[256];
+            strcpy(archive_name, argv[2]);
+            if(strlen(archive_name) < 5 || strcmp(archive_name+(strlen(archive_name)-5), ".arch") != 0){
+                fprintf(stderr, "Error: wrong archive file (-h for help menu)\n");
+                return 1;
+            }
+
             int archive_fd = 0;
-            if((archive_fd = open(argv[1], O_WRONLY | O_APPEND | O_CREAT, 0777)) == -1){
+            if((archive_fd = open(archive_name, O_WRONLY | O_APPEND | O_CREAT, 0777)) == -1){
                 fprintf(stderr, "Error: %s (%d)\n", strerror(errno), errno);
                 return 1;
             }
@@ -259,14 +259,20 @@ int main(int argc, char **argv){
                 return 1;
             }
 
+            char *archive_name = argv[2];
+            if(strlen(archive_name) < 5 || strcmp(archive_name+(strlen(archive_name)-5), ".arch") != 0){
+                fprintf(stderr, "Error: wrong archive file (-h for help menu)\n");
+                return 1;
+            }
+
             int archive_fd = 0;
-            if((archive_fd = open(argv[1], O_RDONLY)) == -1){
+            if((archive_fd = open(archive_name, O_RDONLY)) == -1){
                 fprintf(stderr, "Error: %s (%d)\n", strerror(errno), errno);
                 return 1;
             }
 
             for(int i = 3; i < argc; ++i){
-                extract_file(argv[1], archive_fd, argv[i]);
+                extract_file(archive_name, archive_fd, argv[i]);
             }
 
             close(archive_fd);
@@ -278,8 +284,14 @@ int main(int argc, char **argv){
                 return 1;
             }
 
+            char *archive_name = argv[2];
+            if(strlen(archive_name) < 5 || strcmp(archive_name+(strlen(archive_name)-5), ".arch") != 0){
+                fprintf(stderr, "Error: wrong archive file (-h for help menu)\n");
+                return 1;
+            }
+
             int archive_fd = 0;
-            if((archive_fd = open(argv[1], O_RDONLY)) == -1){
+            if((archive_fd = open(archive_name, O_RDONLY)) == -1){
                 fprintf(stderr, "Error: %s (%d)\n", strerror(errno), errno);
                 return 1;
             }
