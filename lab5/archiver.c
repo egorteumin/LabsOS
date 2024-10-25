@@ -71,7 +71,7 @@ void delete_file(const char *archive_name, int archive_fd, const char *file_name
     ssize_t n = 0;
     off_t file_size;
 
-    if((tmp_file_fd = open(tmp_file_name, O_RDWR | O_CREAT | O_EXCL, 0777)) == -1){
+    if((tmp_file_fd = open(tmp_file_name, O_RDONLY | O_CREAT | O_EXCL, 0777)) == -1){
         fprintf(stderr, "Error: %s (%d)\n", strerror(errno), errno);
         return;
     }
