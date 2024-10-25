@@ -4,6 +4,7 @@
 #include <sys/time.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <stdbool.h>
 #include <getopt.h>
 #include <string.h>
 #include <errno.h>
@@ -63,53 +64,30 @@ void insert_file(int archive_fd, const char *file_name){
     return;
 }
 
-void delete_file(const char *archive_name, int archive_fd, const char *file_name){
+int extract_file(const char *archive_name, int archive_fd, const char *file_name){
     struct fmeta file_meta;
+    int file_fd = 0;
     char buf[BUF_SIZE];
-    char tmp_file_name[] = "archive_tmp";
+    char tmp_file_name[] = "ar_tmp";
     int tmp_file_fd = 0;
     ssize_t n = 0;
-    off_t file_size;
+    off_t file_size = 0;
+    bool is_exist = false;
 
-    if((tmp_file_fd = open(tmp_file_name, O_RDONLY | O_CREAT | O_EXCL, 0777)) == -1){
+    if((tmp_file_fd = open(tmp_file_name, O_RDWR | O_APPEND | O_CREAT | O_EXCL, 0777)) == -1){
         fprintf(stderr, "Error: %s (%d)\n", strerror(errno), errno);
-        return;
+        return -1;
     }
 
     while(read(archive_fd, &file_meta, sizeof(file_meta)) == sizeof(file_meta)){
         if(strcmp(file_meta.name, file_name) == 0){
-            lseek(archive_fd, file_meta.size , SEEK_CUR);
-            continue;
-        }
-        else{
-            write(tmp_file_fd, &file_meta, sizeof(file_meta));
+            is_exist = true;
 
-            file_size = file_meta.size;
-            while((n = read(archive_fd, buf, (file_size > BUF_SIZE) ? BUF_SIZE : file_size)) > 0 && file_size > 0){
-                write(tmp_file_fd, buf, n);
-                file_size -= n;
-            }
-        }
-    }
-
-    close(tmp_file_fd);
-    remove(archive_name);
-    rename(tmp_file_name, archive_name);
-    return;
-}
-
-void extract_file(int archive_fd, const char *file_name){
-    struct fmeta file_meta;
-    int file_fd;
-    char buf[BUF_SIZE];
-    ssize_t n;
-    off_t file_size;
-
-    while(read(archive_fd, &file_meta, sizeof(file_meta)) == sizeof(file_meta)){
-        if(strcmp(file_meta.name, file_name) == 0){
             if((file_fd = open(file_name, O_WRONLY | O_CREAT | O_EXCL, file_meta.mode)) == -1){
                 fprintf(stderr, "File '%s' cannot be extracted from archive: %s (%d)\n", file_name, strerror(errno), errno);
-                return;
+                close(tmp_file_fd);
+                remove(tmp_file_name);
+                return -1;
             }
 
             file_size = file_meta.size;
@@ -128,15 +106,27 @@ void extract_file(int archive_fd, const char *file_name){
             utimes(file_name, times);
 
             close(file_fd);
-            return;
         }
         else{
-            lseek(archive_fd, file_meta.size, SEEK_CUR);
+            write(tmp_file_fd, &file_meta, sizeof(file_meta));
+
+            file_size = file_meta.size;
+            while((n = read(archive_fd, buf, (file_size > BUF_SIZE) ? BUF_SIZE : file_size)) > 0 && file_size > 0){
+                write(tmp_file_fd, buf, n);
+                file_size -= n;
+            }
         }
     }
 
-    fprintf(stderr, "File '%s' was not found in archive\n", file_name);
-    return;
+    if(!is_exist){
+        fprintf(stderr, "File '%s' was not found in archive\n", file_name);
+        remove(tmp_file_name);
+        return archive_fd;
+    }
+
+    remove(archive_name);
+    rename(tmp_file_name, archive_name);
+    return tmp_file_fd;
 }
 
 void archive_stat(int archive_fd){
@@ -148,7 +138,7 @@ void archive_stat(int archive_fd){
     printf("Occupied memory space: %ld bytes\n\n", archive_st.st_size);
 
     while(read(archive_fd, &file_meta, sizeof(file_meta)) > 0){
-        printf("File %ld: '%s'\t%ld bytes\n", ++n, file_meta.name, sizeof(file_meta)+file_meta.size);
+        printf("File %ld: '%s'\t%ld bytes\n", ++n, file_meta.name, file_meta.size);
         lseek(archive_fd, file_meta.size, SEEK_CUR);
     }
     return;
@@ -256,23 +246,11 @@ int main(int argc, char **argv){
                 if(i == 3){
                     continue;
                 }
-                extract_file(archive_fd, argv[i]);
+                archive_fd = extract_file(archive_name, archive_fd, argv[i]);
+                lseek(archive_fd, 0, SEEK_SET);
             }
-
-            for(int i = 2; i < argc; ++i){
-                if(i == 3){
-                    continue;
-                }
-                delete_file(archive_name, archive_fd, argv[i]);
-            }
-
+            
             close(archive_fd);
-
-            struct stat archive_st;
-            fstat(archive_fd, &archive_st);
-            if(archive_st.st_size == 0){
-                remove(archive_name);
-            }
             break;
         }
         case s:
