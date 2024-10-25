@@ -212,10 +212,10 @@ int main(int argc, char **argv){
 
             char archive_name[256];
             strcpy(archive_name, argv[3]);
-            if(strlen(archive_name) < 5 || strcmp(archive_name+(strlen(archive_name)-5), ".arch") != 0){
-                fprintf(stderr, "Error: wrong archive file (-h for help menu)\n");
-                return 1;
-            }
+            // if(strlen(archive_name) < 5 || strcmp(archive_name+(strlen(archive_name)-5), ".arch") != 0){
+            //     fprintf(stderr, "Error: wrong archive file (-h for help menu)\n");
+            //     return 1;
+            // }
 
             int archive_fd = 0;
             if((archive_fd = open(archive_name, O_WRONLY | O_APPEND | O_CREAT, 0777)) == -1){
@@ -241,10 +241,10 @@ int main(int argc, char **argv){
             }
 
             char *archive_name = argv[3];
-            if(strlen(archive_name) < 5 || strcmp(archive_name+(strlen(archive_name)-5), ".arch") != 0){
-                fprintf(stderr, "Error: wrong archive file (-h for help menu)\n");
-                return 1;
-            }
+            // if(strlen(archive_name) < 5 || strcmp(archive_name+(strlen(archive_name)-5), ".arch") != 0){
+            //     fprintf(stderr, "Error: wrong archive file (-h for help menu)\n");
+            //     return 1;
+            // }
 
             int archive_fd = 0;
             if((archive_fd = open(archive_name, O_RDONLY)) == -1){
@@ -282,10 +282,10 @@ int main(int argc, char **argv){
             }
 
             char *archive_name = argv[2];
-            if(strlen(archive_name) < 5 || strcmp(archive_name+(strlen(archive_name)-5), ".arch") != 0){
-                fprintf(stderr, "Error: wrong archive file (-h for help menu)\n");
-                return 1;
-            }
+            // if(strlen(archive_name) < 5 || strcmp(archive_name+(strlen(archive_name)-5), ".arch") != 0){
+            //     fprintf(stderr, "Error: wrong archive file (-h for help menu)\n");
+            //     return 1;
+            // }
 
             int archive_fd = 0;
             if((archive_fd = open(archive_name, O_RDONLY)) == -1){
