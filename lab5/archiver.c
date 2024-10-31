@@ -28,7 +28,29 @@ struct fmeta{
     time_t mtime;
 };
 
+off_t find_file(const int archive_fd, const char *file_name){
+    struct fmeta file_meta;
+    off_t file_pos = 0;
+
+    lseek(archive_fd, 0, SEEK_SET);
+    while(read(archive_fd, &file_meta, sizeof(file_meta)) == sizeof(file_meta)){
+        if(strcmp(file_name, file_meta.name) == 0){
+            return file_pos;
+        }
+        else{
+            file_pos = lseek(archive_fd, file_meta.size, SEEK_CUR);
+        }
+    }
+
+    return -1;
+}
+
 void insert_file(int archive_fd, const char *file_name){
+    if(find_file(archive_fd, file_name) >= 0){
+        fprintf(stderr, "File '%s' already exist in archive\n", file_name);
+        return;
+    }
+    
     int file_fd = 0;
     if((file_fd = open(file_name, O_RDONLY)) == -1){
         fprintf(stderr, "File '%s' cannot be added to archive: %s (%d)\n", file_name, strerror(errno), errno);
@@ -208,7 +230,7 @@ int main(int argc, char **argv){
             // }
 
             int archive_fd = 0;
-            if((archive_fd = open(archive_name, O_WRONLY | O_APPEND | O_CREAT, 0777)) == -1){
+            if((archive_fd = open(archive_name, O_RDWR | O_APPEND | O_CREAT, 0777)) == -1){
                 fprintf(stderr, "Error: %s (%d)\n", strerror(errno), errno);
                 return 1;
             }
