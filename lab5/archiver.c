@@ -124,6 +124,7 @@ int extract_file(const char *archive_name, int archive_fd, const char *file_name
             times[1].tv_sec = file_meta.mtime;
             times[1].tv_usec = 0;
 
+            chmod(file_name, file_meta.mode);
             fchown(file_fd, file_meta.uid, file_meta.gid);
             utimes(file_name, times);
 
