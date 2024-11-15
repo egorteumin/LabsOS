@@ -25,12 +25,14 @@ int main(int argc, char **argv){
     switch(res){
         case -1:
             fprintf(stderr, "Error: %s (%d)\n", strerror(errno), errno);
+            unlink(argv[1]);
             return 1;
         case 0:
         {
             int fifo_fd = 0;
             if((fifo_fd = open(argv[1], O_RDONLY)) < 0){
                 fprintf(stderr, "Error: %s (%d)\n", strerror(errno), errno);
+                unlink(argv[1]);
                 return 1;
             }
 
@@ -63,6 +65,7 @@ int main(int argc, char **argv){
             int fifo_fd = 0;
             if((fifo_fd = open(argv[1], O_WRONLY)) < 0){
                 fprintf(stderr, "Error: %s (%d)\n", strerror(errno), errno);
+                unlink(argv[1]);
                 return 1;
             }
             
