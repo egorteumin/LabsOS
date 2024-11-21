@@ -9,7 +9,7 @@
 
 int main(){
     key_t shm_key = 1111;
-    int shm_id = shmget(shm_key, 512, 0644);
+    int shm_id = shmget(shm_key, 512, 0777);
     if(shm_id < 0){
         fprintf(stderr, "Ошибка: %s (%d)\n", strerror(errno), errno);
     }

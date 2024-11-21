@@ -21,7 +21,7 @@ int main(){
     signal(SIGINT, delete_shm);
 
     key_t shm_key = 1111;
-    shm_id = shmget(shm_key, 512, 0644 | IPC_CREAT | IPC_EXCL);
+    shm_id = shmget(shm_key, 512, 0777 | IPC_CREAT | IPC_EXCL);
     if(shm_id < 0){
         fprintf(stderr, "Ошибка: Эта программа уже запущена\n");
         return 1;
