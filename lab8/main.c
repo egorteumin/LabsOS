@@ -36,8 +36,7 @@ int main(){
         pthread_create(&threads_id[i], NULL, read_arr, numbers);
     }
 
-    pthread_join(threads_id[0], NULL);
-    for(int i = 1; i < 11; ++i){
+    for(int i = 0; i < 11; ++i){
         pthread_join(threads_id[i], NULL);
     }
     pthread_mutex_destroy(&mutex);
