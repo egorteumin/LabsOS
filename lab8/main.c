@@ -13,7 +13,7 @@ void* read_arr(void *arg){
         pthread_mutex_unlock(&mutex);
         sleep(1);
     }
-    return NULL;
+    pthread_exit(NULL);
 }
 
 void* write_arr(void *arg){
@@ -23,7 +23,7 @@ void* write_arr(void *arg){
         pthread_mutex_unlock(&mutex);
         sleep(1);
     }
-    return NULL;
+    pthread_exit(NULL);
 }
 
 int main(){
