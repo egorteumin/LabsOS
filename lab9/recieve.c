@@ -13,7 +13,7 @@ union semum{
 };
 
 int main(){
-    key_t shm_key = ftok("send.c", 13);
+    key_t shm_key = ftok("send.c", 14);
     int shm_id = shmget(shm_key, 512, 0777);
     if(shm_id < 0){
         fprintf(stderr, "Ошибка: %s (%d)\n", strerror(errno), errno);
@@ -61,7 +61,7 @@ int main(){
         sem_buf.sem_op = 1;
         semop(sem_id, &sem_buf, 1);
         
-        sleep(1);
+        sleep(2);
     }
 
     shmdt(shm_ptr);

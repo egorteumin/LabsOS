@@ -24,7 +24,7 @@ void delete_shm(){
 int main(){
     signal(SIGINT, delete_shm);
 
-    key_t shm_key = ftok("send.c", 13);
+    key_t shm_key = ftok("send.c", 14);
     shm_id = shmget(shm_key, 512, 0777 | IPC_CREAT | IPC_EXCL);
     if(shm_id < 0){
         fprintf(stderr, "Ошибка: Эта программа уже запущена\n");
@@ -72,8 +72,6 @@ int main(){
         
         sem_buf.sem_op = 1;
         semop(sem_id, &sem_buf, 1);
-        
-        sleep(2);
     }
 
     shmdt(shm_ptr);
