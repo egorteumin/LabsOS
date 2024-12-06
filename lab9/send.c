@@ -73,7 +73,7 @@ int main(){
         sem_buf.sem_op = 1;
         semop(sem_id, &sem_buf, 1);
         
-        sleep(5);
+        sleep(2);
     }
 
     shmdt(shm_ptr);
