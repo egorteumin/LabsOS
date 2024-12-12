@@ -29,7 +29,7 @@ int main(){
     int sem_key = ftok("recieve.c", 13);
     int sem_id = semget(sem_key, 1, 0777);
     if(sem_id < 0){
-        fprintf(stderr, "Ошибка: не удалось создать семафор\n");
+        fprintf(stderr, "Ошибка: не удалось получить семафор\n");
         return 1;
     }
 
@@ -57,7 +57,7 @@ int main(){
         semop(sem_id, &sem_buf, 1);
 
         printf("%s.\tRecieved string: \"%s\"\n", buf, shm_ptr);
-        
+
         sem_buf.sem_op = 1;
         semop(sem_id, &sem_buf, 1);
         

@@ -69,7 +69,7 @@ int main(){
         semop(sem_id, &sem_buf, 1);
 
         memcpy(shm_ptr, buf, 128);
-        
+      
         sem_buf.sem_op = 1;
         semop(sem_id, &sem_buf, 1);
     }
