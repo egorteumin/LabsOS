@@ -20,7 +20,7 @@ void* read_arr(void *arg){
         pthread_rwlock_rdlock(&rwlock);
         printf("tid: %lx\tarr: %s\n", pthread_self(), (char*)arg);
         pthread_rwlock_unlock(&rwlock);
-        usleep(500000);
+        sleep(2);
     }
     pthread_exit(NULL);
 }
