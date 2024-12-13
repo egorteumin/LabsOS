@@ -40,7 +40,5 @@ int main(){
     for(int i = 0; i < 11; ++i){
         pthread_join(thread_id[i], NULL);
     }
-    pthread_cond_destroy(&cond_var);
-    pthread_mutex_destroy(&mutex);
     return 0;
 }
