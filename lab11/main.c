@@ -37,6 +37,5 @@ int main(){
     for(int i = 0; i < 11; ++i){
         pthread_join(thread_id[i], NULL);
     }
-    pthread_rwlock_destroy(&rwlock);
     return 0;
 }
