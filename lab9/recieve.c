@@ -13,7 +13,7 @@ union semum{
 };
 
 int main(){
-    key_t shm_key = ftok("send.c", 14);
+    key_t shm_key = ftok("shm", 14);
     int shm_id = shmget(shm_key, 512, 0777);
     if(shm_id < 0){
         fprintf(stderr, "Ошибка: %s (%d)\n", strerror(errno), errno);
@@ -26,7 +26,7 @@ int main(){
     }
 
 
-    int sem_key = ftok("recieve.c", 13);
+    int sem_key = ftok("shm", 13);
     int sem_id = semget(sem_key, 1, 0777);
     if(sem_id < 0){
         fprintf(stderr, "Ошибка: не удалось получить семафор\n");

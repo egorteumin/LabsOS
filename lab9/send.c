@@ -8,6 +8,7 @@
 #include <signal.h>
 #include <errno.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <time.h>
 
 int shm_id;
@@ -18,13 +19,20 @@ union semum{
 
 void delete_shm(){
     shmctl(shm_id, IPC_RMID, NULL);
+    remove("shm");
     exit(0);
 }
 
 int main(){
     signal(SIGINT, delete_shm);
+    signal(SIGTERM, delete_shm);
 
-    key_t shm_key = ftok("send.c", 14);
+    if(open("shm", O_CREAT | O_EXCL, 0777) == -1){
+        fprintf(stderr, "Ошибка: Эта программа уже запущена\n");
+        return 1;
+    }
+
+    key_t shm_key = ftok("shm", 14);
     shm_id = shmget(shm_key, 512, 0777 | IPC_CREAT | IPC_EXCL);
     if(shm_id < 0){
         fprintf(stderr, "Ошибка: Эта программа уже запущена\n");
@@ -37,8 +45,7 @@ int main(){
         return 1;
     }
 
-
-    int sem_key = ftok("recieve.c", 13);
+    int sem_key = ftok("shm", 13);
     int sem_id = semget(sem_key, 1, 0777 | IPC_CREAT);
     if(sem_id < 0){
         fprintf(stderr, "Ошибка: не удалось создать семафор\n");
@@ -77,5 +84,6 @@ int main(){
     shmdt(shm_ptr);
     shmctl(shm_id, IPC_RMID, NULL);
     semctl(sem_id, 0, IPC_RMID);
+    remove("shm");
     return 0;
 }
